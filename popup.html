@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Mohrez Quick Autofill</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Tahoma, sans-serif;
+    }
+    body {
+      width: 320px;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 13px;
+      padding: 12px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 10px;
+    }
+    .header-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: rgba(99, 102, 241, 0.2);
+      color: #818cf8;
+      border-radius: 9999px;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+    .search-box {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: #fff;
+      font-size: 12px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+    .search-box:focus {
+      border-color: #6366f1;
+    }
+    .items-list {
+      max-height: 230px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+    .item-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .item-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .item-details {
+      flex: 1;
+      min-width: 0;
+    }
+    .item-label {
+      font-weight: 600;
+      font-size: 12px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-val {
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: monospace;
+      direction: ltr;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .item-del-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .item-del-btn:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.15);
+    }
+    .form-container {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .input-field {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: #fff;
+      font-size: 11px;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: #6366f1;
+    }
+    .btn-add {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .btn-add:hover {
+      background: #4f46e5;
+    }
+    .empty-note {
+      text-align: center;
+      padding: 20px 0;
+      color: #64748b;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+      <span>مدیریت Autofill</span>
+    </div>
+    <span class="badge" id="mqa-count-badge">0 مورد</span>
+  </div>
+
+  <input type="text" class="search-box" id="mqa-popup-search" placeholder="جستجو میان مقادیر ذخیره‌شده..." />
+
+  <div class="items-list" id="mqa-popup-list">
+    <!-- List loaded dynamically -->
+  </div>
+
+  <div class="form-container">
+    <div style="font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 2px;">+ افزودن مقدار دستی جدید:</div>
+    <div style="display: flex; gap: 4px;">
+      <input type="text" class="input-field" id="mqa-new-label" placeholder="عنوان (مثلاً شماره شبا)" style="flex: 1;" />
+      <input type="text" class="input-field" id="mqa-new-cat" placeholder="دسته" style="width: 80px;" />
+    </div>
+    <input type="text" class="input-field" id="mqa-new-val" placeholder="مقدار دقیق (مثلاً IR0000000000...)" />
+    <button class="btn-add" id="mqa-btn-add-item">
+      <span>ذخیره در دیتابیس</span>
+    </button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
