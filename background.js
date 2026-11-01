@@ -36,6 +36,43 @@ async function saveToAgent(items) {
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'SET_EXTENSION_STATE') {
+    const isEnabled = request.isEnabled !== false;
+    chrome.storage.local.set({ 'mqa_autofill_enabled': isEnabled }, () => {
+      if (chrome.tabs && chrome.tabs.query) {
+        chrome.tabs.query({}, (tabs) => {
+          for (const tab of tabs) {
+            if (tab.id) {
+              chrome.tabs.sendMessage(tab.id, {
+                action: 'EXTENSION_STATE_UPDATED',
+                isEnabled
+              }).catch(() => {});
+            }
+          }
+        });
+      }
+    });
+    sendResponse({ ok: true, isEnabled });
+    return true;
+  }
+
+  if (request.action === 'OPEN_TAB' && request.url) {
+    const targetUrl = request.url;
+    if (chrome.tabs) {
+      if (sender.tab && sender.tab.id && chrome.tabs.update) {
+        chrome.tabs.update(sender.tab.id, { url: targetUrl }, (tab) => {
+          if (chrome.runtime.lastError || !tab) {
+            chrome.tabs.create({ url: targetUrl });
+          }
+        });
+      } else if (chrome.tabs.create) {
+        chrome.tabs.create({ url: targetUrl });
+      }
+      sendResponse({ ok: true });
+    }
+    return true;
+  }
+
   if (request.action === 'GET_AUTOFILL_ITEMS') {
     fetchFromAgent().then((items) => {
       if (items !== null) {

@@ -13,6 +13,57 @@
   if (window.__MQA_INJECTED__) return;
   window.__MQA_INJECTED__ = true;
 
+  // Listen for internal URL open requests from Firefox Homepage bookmarks (e.g. about:debugging)
+  window.addEventListener('MOHREZ_OPEN_URL', (e) => {
+    const targetUrl = e.detail?.url;
+    if (targetUrl && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      window.dispatchEvent(new CustomEvent('MOHREZ_OPEN_URL_ACK'));
+      chrome.runtime.sendMessage({ action: 'OPEN_TAB', url: targetUrl });
+    }
+  });
+
+  let isAutofillEnabled = true;
+
+  // Listen for extension toggle events from homepage
+  window.addEventListener('MOHREZ_EXTENSION_STATE_CHANGED', (e) => {
+    const d = e.detail;
+    if (!d) return;
+    const isTarget = d.id === 'quick-autofill' || (d.title && /autofill|تکمیل/i.test(d.title));
+    if (isTarget) {
+      isAutofillEnabled = d.isEnabled !== false;
+      if (!isAutofillEnabled) {
+        if (triggerButton) triggerButton.style.display = 'none';
+        if (typeof closePopup === 'function') closePopup();
+      }
+      if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        chrome.runtime.sendMessage({ action: 'SET_EXTENSION_STATE', isEnabled: d.isEnabled });
+      }
+    }
+  });
+
+  // Listen for broadcast state updates across all tabs
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.action === 'EXTENSION_STATE_UPDATED') {
+        isAutofillEnabled = msg.isEnabled !== false;
+        if (!isAutofillEnabled) {
+          if (triggerButton) triggerButton.style.display = 'none';
+          if (typeof closePopup === 'function') closePopup();
+        }
+      }
+    });
+  }
+
+  // Check initial storage
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['mqa_autofill_enabled'], (res) => {
+      if (res && res.mqa_autofill_enabled === false) {
+        isAutofillEnabled = false;
+        if (triggerButton) triggerButton.style.display = 'none';
+      }
+    });
+  }
+
   let currentTargetInput = null;
   let triggerButton = null;
   let popupContainer = null;
@@ -206,7 +257,7 @@
   }
 
   function positionTrigger(el) {
-    if (!el || !document.contains(el)) {
+    if (!isAutofillEnabled || !el || !document.contains(el)) {
       hideTrigger();
       return;
     }
